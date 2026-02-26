@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book a Room - The Pearl Manila Hotel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ asset('css/test.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container nav-container">
+            <div class="logo">
+                <img src="{{ asset('image/PearlMNL_LOGO.png') }}" alt="Pearl Manila">
+                The Pearl Manila
+            </div>
+            <ul class="nav-menu">
+                <li><a href="{{ url('/') }}">Home</a></li>
+                <li><a href="{{ url('/rooms') }}">Rooms</a></li>
+                <li><a href="{{ url('/facilities') }}">Facilities</a></li>
+                <li><a href="{{ route('rooms.booking') }}">Check In</a></li>
+                
+                <li>
+                    <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+                        <i class="fas fa-moon"></i>
+                        <span class="theme-toggle-label">Dark</span>
+                    </button>
+                </li>
+                <li>
+                    <form method="POST" action="{{ route('logout') }}" id="logoutForm">
+                        @csrf
+                        <button class="btn btn-primary" type="submit">Logout</button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="auth-page customer-booking-page">
+        <div class="container customer-booking-container">
+            <div class="customer-booking-card">
+                <div class="customer-booking-head">
+                    <div>
+                        <h2>Booking Calendar</h2>
+                        <p>Choose a date to reserve either Junior Suite or Superior King.</p>
+                    </div>
+                    <button class="btn btn-outline" type="button" id="jumpToday">Jump to Today</button>
+                </div>
+
+                @if (session('status'))
+                    <div class="alert alert-success">{{ session('status') }}</div>
+                @endif
+
+                @if (!empty($confirmedBookings) && $confirmedBookings->count() > 0)
+                    @php
+                        $bookingIds = $confirmedBookings->pluck('id')->toArray();
+                    @endphp
+                    <div class="alert alert-success" id="bookingConfirmedAlert" data-booking-ids="{{ json_encode($bookingIds) }}">
+                        Booking is confirmed, please proceed to pay online or through the front desk.
+                    </div>
+                @endif
+
+                @if ($errors->any())
+                    <div class="alert alert-error">
+                        <ul>
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                @php
+                    $calendarMonths = $calendarDays->groupBy(fn ($day) => $day->format('Y-m'));
+                @endphp
+                <div class="customer-month-nav" id="customerMonthNav">
+                    <button class="customer-month-nav-btn" type="button" id="customerMonthPrev">
+                        <i class="fas fa-chevron-left"></i>
+                        <span>Previous</span>
+                    </button>
+                    <div class="customer-month-nav-title-wrap">
+                        <h4 class="customer-month-nav-title" id="customerMonthTitle"></h4>
+                        <p class="customer-month-nav-subtitle">Monthly view</p>
+                    </div>
+                    <button class="customer-month-nav-btn" type="button" id="customerMonthNext">
+                        <span>Next</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div id="bookingCalendar">
+                    @foreach ($calendarMonths as $monthDays)
+                        @php
+                            $monthLabel = $monthDays->first()->format('F Y');
+                            $monthKey = $monthDays->first()->format('Y-m');
+                        @endphp
+                        <div class="customer-month-block {{ $loop->first ? 'is-active' : '' }}" data-month-label="{{ $monthLabel }}" data-month-key="{{ $monthKey }}">
+                            <div class="customer-calendar-grid">
+                                @foreach ($monthDays as $day)
+                                    @php
+                                        $dateKey = $day->toDateString();
+                                        $dayAvailability = $availabilityByDate[$dateKey] ?? [];
+                                        $bookable = collect($dayAvailability)->contains(fn ($item) => ($item['available'] ?? 0) > 0);
+                                    @endphp
+                                    <button
+                                        class="customer-day {{ $bookable ? 'is-open' : 'is-closed' }}"
+                                        type="button"
+                                        data-date="{{ $dateKey }}"
+                                        data-bookable="{{ $bookable ? '1' : '0' }}"
+                                        @foreach ($rooms as $room)
+                                            @php $roomState = $dayAvailability[$room->id] ?? ['available' => 0, 'capacity' => 0]; @endphp
+                                            data-room-{{ $room->id }}-available="{{ $roomState['available'] }}"
+                                            data-room-{{ $room->id }}-capacity="{{ $roomState['capacity'] }}"
+                                        @endforeach
+                                    >
+                                        <div class="customer-day-top">
+                                            <span class="customer-day-weekday">{{ $day->format('D') }}</span>
+                                            <span class="customer-day-number">{{ $day->format('d') }}</span>
+                                            <span class="customer-day-month">{{ $day->format('M') }}</span>
+                                        </div>
+                                        <div class="customer-day-rooms">
+                                            @foreach ($rooms as $room)
+                                                @php $roomState = $dayAvailability[$room->id] ?? ['available' => 0, 'capacity' => 0]; @endphp
+                                                <div class="customer-room-line {{ ($roomState['available'] ?? 0) > 0 ? 'has-stock' : 'no-stock' }}">
+                                                    <span>{{ $room->name }}</span>
+                                                    <strong>{{ $roomState['available'] ?? 0 }}</strong>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                        @if (! $bookable)
+                                            <span class="customer-day-badge">Unavailable</span>
+                                        @endif
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="customer-modal" id="bookingModal" aria-hidden="true">
+        <div class="customer-modal-backdrop" data-close-modal="bookingModal"></div>
+        
+        <!-- Floor Availability Panel -->
+        <div class="floor-availability-panel" id="floorAvailabilityPanel">
+            <div class="floor-availability-header">
+                <h4><i class="fas fa-building"></i> Floor Availability</h4>
+                <p id="floorAvailabilityDate">Select a date</p>
+            </div>
+            <div class="floor-availability-body" id="floorAvailabilityBody">
+                <p class="floor-availability-empty">Click a date to view floor-by-floor availability</p>
+            </div>
+        </div>
+
+        <div class="customer-modal-card" role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
+            <div class="customer-modal-head">
+                <div>
+                    <h3 id="booking-modal-title">New Booking</h3>
+                    <p>Select room type and complete your reservation details.</p>
+                </div>
+                <button class="customer-modal-close" type="button" data-close-modal="bookingModal">&times;</button>
+            </div>
+
+            <form class="auth-form" method="POST" action="{{ route('rooms.booking.store') }}" id="bookingForm" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="check_in_date" id="modalCheckInDate">
+
+                <div>
+                    <label for="modalDateDisplay">Check-in Date</label>
+                    <input type="text" id="modalDateDisplay" readonly>
+                </div>
+
+                <div>
+                    <label for="modalRoomId">Room Type</label>
+                    <select id="modalRoomId" name="room_id" required>
+                        <option value="">Choose room type</option>
+                        @foreach ($rooms as $room)
+                            <option value="{{ $room->id }}" data-room-id="{{ $room->id }}">{{ $room->name }}</option>
+                        @endforeach
+                    </select>
+                    <small id="roomAvailabilityNote" class="customer-note">Select a room to view availability.</small>
+                </div>
+
+                <div>
+                    <label for="modalAdults">Adults</label>
+                    <input id="modalAdults" name="adults" type="number" min="1" max="10" required value="2">
+                </div>
+
+                <div>
+                    <label for="modalChildren">Children</label>
+                    <input id="modalChildren" name="children" type="number" min="0" max="10" required value="0">
+                </div>
+
+                <div>
+                    <label for="modalRoomsCount">Rooms</label>
+                    <input id="modalRoomsCount" name="rooms_count" type="number" min="1" max="10" required value="1">
+                </div>
+
+                <div>
+                    <label for="modalCheckOutDate">Check-out Date</label>
+                    <input id="modalCheckOutDate" name="check_out_date" type="date" required>
+                </div>
+
+                <div>
+                    <label for="modalCheckInTime">Check-in Time</label>
+                    <input id="modalCheckInTime" name="check_in_time" type="time" required value="14:00">
+                </div>
+
+                <div>
+                    <label for="modalCheckOutTime">Check-out Time</label>
+                    <input id="modalCheckOutTime" name="check_out_time" type="time" required value="12:00">
+                </div>
+
+                <div>
+                    <label for="modalIdDocument">Valid ID (JPG, PNG, PDF)</label>
+                    <input id="modalIdDocument" name="id_document" type="file" accept=".jpg,.jpeg,.png,.pdf" required>
+                    <small class="customer-note">Required for manual verification before booking confirmation.</small>
+                </div>
+
+                <div class="auth-actions">
+                    <span></span>
+                    <button class="btn btn-primary" type="submit" id="bookingSubmit">Complete Reservation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="booking-confirm-popup" id="bookingConfirmPopup" aria-hidden="true">
+        <div class="booking-confirm-popup-backdrop" data-close-popup="bookingConfirmPopup"></div>
+        <div class="booking-confirm-popup-card" role="dialog" aria-modal="true" aria-labelledby="booking-confirm-title">
+            <div class="booking-confirm-popup-icon" aria-hidden="true">
+                <i class="fas fa-circle-check"></i>
+            </div>
+            <h3 id="booking-confirm-title">Booking Confirmed</h3>
+            <p id="bookingConfirmMessage">Booking is confirmed, please proceed to pay online or through the front desk.</p>
+            <button class="btn btn-primary booking-confirm-popup-btn" type="button" id="bookingConfirmClose">Got it</button>
+        </div>
+    </div>
+
+    <script src="{{ asset('js/test.js') }}"></script>
+    <script>
+        const bookingCalendar = document.getElementById('bookingCalendar');
+        const modal = document.getElementById('bookingModal');
+        const closeControls = document.querySelectorAll('[data-close-modal="bookingModal"]');
+        const checkInDate = document.getElementById('modalCheckInDate');
+        const dateDisplay = document.getElementById('modalDateDisplay');
+        const checkOutDate = document.getElementById('modalCheckOutDate');
+        const roomSelect = document.getElementById('modalRoomId');
+        const roomAvailabilityNote = document.getElementById('roomAvailabilityNote');
+        const bookingSubmit = document.getElementById('bookingSubmit');
+        const jumpToday = document.getElementById('jumpToday');
+        const floorAvailabilityPanel = document.getElementById('floorAvailabilityPanel');
+        const floorAvailabilityBody = document.getElementById('floorAvailabilityBody');
+        const floorAvailabilityDate = document.getElementById('floorAvailabilityDate');
+        const customerMonthBlocks = Array.from(document.querySelectorAll('.customer-month-block'));
+        const customerMonthTitle = document.getElementById('customerMonthTitle');
+        const customerMonthPrev = document.getElementById('customerMonthPrev');
+        const customerMonthNext = document.getElementById('customerMonthNext');
+        const bookingConfirmPopup = document.getElementById('bookingConfirmPopup');
+        const bookingConfirmMessage = document.getElementById('bookingConfirmMessage');
+        const bookingConfirmClose = document.getElementById('bookingConfirmClose');
+        const bookingConfirmBackdrop = document.querySelector('[data-close-popup="bookingConfirmPopup"]');
+        const todayDateKey = @json(\Carbon\Carbon::today()->toDateString());
+
+        let activeDay = null;
+        let activeCustomerMonthIndex = customerMonthBlocks.findIndex((block) => block.classList.contains('is-active'));
+
+        if (activeCustomerMonthIndex < 0 && customerMonthBlocks.length > 0) {
+            activeCustomerMonthIndex = 0;
+            customerMonthBlocks[0].classList.add('is-active');
+        }
+
+        // Floor inventory data from server
+        const floorInventoryData = @json($floorInventoryData);
+        const availabilityByDate = @json($availabilityByDate);
+        const rooms = @json($rooms);
+
+        const formatDateLabel = (value) => {
+            const date = new Date(value + 'T00:00:00');
+            return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        };
+
+        const renderCustomerMonth = () => {
+            customerMonthBlocks.forEach((block, index) => {
+                block.classList.toggle('is-active', index === activeCustomerMonthIndex);
+            });
+
+            const activeMonth = customerMonthBlocks[activeCustomerMonthIndex];
+            if (customerMonthTitle && activeMonth) {
+                customerMonthTitle.textContent = activeMonth.dataset.monthLabel || '';
+            }
+
+            if (customerMonthPrev) {
+                customerMonthPrev.disabled = activeCustomerMonthIndex <= 0;
+            }
+
+            if (customerMonthNext) {
+                customerMonthNext.disabled = activeCustomerMonthIndex >= customerMonthBlocks.length - 1;
+            }
+        };
+
+        customerMonthPrev?.addEventListener('click', () => {
+            if (activeCustomerMonthIndex > 0) {
+                activeCustomerMonthIndex -= 1;
+                renderCustomerMonth();
+            }
+        });
+
+        customerMonthNext?.addEventListener('click', () => {
+            if (activeCustomerMonthIndex < customerMonthBlocks.length - 1) {
+                activeCustomerMonthIndex += 1;
+                renderCustomerMonth();
+            }
+        });
+
+        renderCustomerMonth();
+
+        const updateFloorAvailability = (date) => {
+            floorAvailabilityDate.textContent = formatDateLabel(date);
+            
+            const inventoryForDate = floorInventoryData[date] || [];
+            
+            if (inventoryForDate.length === 0) {
+                floorAvailabilityBody.innerHTML = '<p class="floor-availability-empty">No rooms available on this date</p>';
+                return;
+            }
+
+            // Group by room type
+            const roomGroups = {};
+            inventoryForDate.forEach(item => {
+                if (!roomGroups[item.room_id]) {
+                    roomGroups[item.room_id] = [];
+                }
+                roomGroups[item.room_id].push(item);
+            });
+
+            let html = '';
+            Object.keys(roomGroups).forEach(roomId => {
+                const room = rooms.find(r => r.id == roomId);
+                const floors = roomGroups[roomId];
+                
+                html += `
+                    <div class="floor-room-group">
+                        <div class="floor-room-header">
+                            <i class="fas fa-bed"></i>
+                            <span>${room ? room.name : 'Room'}</span>
+                        </div>
+                        <div class="floor-list">
+                `;
+                
+                floors.forEach(floor => {
+                    html += `
+                        <div class="floor-item">
+                            <span class="floor-label">Floor ${floor.floor.number}</span>
+                            <span class="floor-count">${floor.available_rooms} available</span>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            floorAvailabilityBody.innerHTML = html;
+        };
+
+        const openModal = (dayButton) => {
+            activeDay = dayButton;
+            const date = dayButton.dataset.date;
+            checkInDate.value = date;
+            dateDisplay.value = formatDateLabel(date);
+            checkOutDate.value = date;
+            checkOutDate.min = date;
+            roomSelect.value = '';
+            roomAvailabilityNote.textContent = 'Select a room to view availability.';
+            bookingSubmit.disabled = true;
+            
+            // Update floor availability
+            updateFloorAvailability(date);
+            
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+        };
+
+        const closeModal = () => {
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+        };
+
+        const openBookingConfirmPopup = (message) => {
+            if (!bookingConfirmPopup) {
+                return;
+            }
+
+            if (bookingConfirmMessage) {
+                bookingConfirmMessage.textContent = message;
+            }
+
+            bookingConfirmPopup.classList.add('is-open');
+            bookingConfirmPopup.setAttribute('aria-hidden', 'false');
+        };
+
+        const closeBookingConfirmPopup = () => {
+            if (!bookingConfirmPopup) {
+                return;
+            }
+
+            bookingConfirmPopup.classList.remove('is-open');
+            bookingConfirmPopup.setAttribute('aria-hidden', 'true');
+        };
+
+        bookingConfirmClose?.addEventListener('click', closeBookingConfirmPopup);
+        bookingConfirmBackdrop?.addEventListener('click', closeBookingConfirmPopup);
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeBookingConfirmPopup();
+            }
+        });
+
+        bookingCalendar.querySelectorAll('.customer-day').forEach((button) => {
+            button.addEventListener('click', () => {
+                if (button.dataset.bookable !== '1') {
+                    return;
+                }
+                openModal(button);
+            });
+        });
+
+        closeControls.forEach((button) => {
+            button.addEventListener('click', closeModal);
+        });
+
+        roomSelect.addEventListener('change', () => {
+            if (!activeDay || !roomSelect.value) {
+                bookingSubmit.disabled = true;
+                roomAvailabilityNote.textContent = 'Select a room to view availability.';
+                return;
+            }
+
+            const date = activeDay.dataset.date;
+            const roomState = availabilityByDate?.[date]?.[roomSelect.value] ?? { available: 0, capacity: 0 };
+            const available = Number(roomState.available ?? 0);
+            const capacity = Number(roomState.capacity ?? 0);
+
+            if (capacity <= 0) {
+                roomAvailabilityNote.textContent = 'Admin has not set inventory for this room yet.';
+                bookingSubmit.disabled = true;
+                return;
+            }
+
+            roomAvailabilityNote.textContent = available > 0
+                ? `${available} room(s) available for selected date.`
+                : 'No rooms available for selected date.';
+            bookingSubmit.disabled = available <= 0;
+        });
+
+        jumpToday.addEventListener('click', () => {
+            const todayButton = bookingCalendar.querySelector(`.customer-day[data-date="${todayDateKey}"]`);
+            if (todayButton) {
+                const monthBlock = todayButton.closest('.customer-month-block');
+                const monthIndex = customerMonthBlocks.findIndex((block) => block === monthBlock);
+
+                if (monthIndex >= 0 && monthIndex !== activeCustomerMonthIndex) {
+                    activeCustomerMonthIndex = monthIndex;
+                    renderCustomerMonth();
+                }
+
+                todayButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+                return;
+            }
+
+            const firstDay = bookingCalendar.querySelector('.customer-month-block.is-active .customer-day');
+            if (firstDay) {
+                firstDay.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+            }
+        });
+
+        // Handle booking confirmed message with localStorage + real-time polling
+        const bookingAlert = document.getElementById('bookingConfirmedAlert');
+        const bookingConfirmedPopupMessage = 'Booking is confirmed, please proceed to pay online or through the front desk.';
+        const confirmationsEndpoint = @json(route('rooms.booking.confirmations'));
+
+        const getAcknowledgedBookings = () => {
+            try {
+                const stored = JSON.parse(localStorage.getItem('acknowledgedBookings') || '[]');
+                return Array.isArray(stored) ? stored.map((id) => Number(id)).filter((id) => Number.isFinite(id)) : [];
+            } catch (error) {
+                return [];
+            }
+        };
+
+        const setAcknowledgedBookings = (bookingIds) => {
+            localStorage.setItem('acknowledgedBookings', JSON.stringify(bookingIds));
+        };
+
+        const showBookingConfirmationPopup = (newBookingIds, showPopup = true) => {
+            if (!newBookingIds.length) {
+                return;
+            }
+
+            if (bookingAlert) {
+                bookingAlert.textContent = bookingConfirmedPopupMessage;
+                bookingAlert.style.display = 'block';
+            }
+
+            const acknowledgedBookings = getAcknowledgedBookings();
+            const updatedAcknowledged = [...new Set([...acknowledgedBookings, ...newBookingIds])];
+            setAcknowledgedBookings(updatedAcknowledged);
+
+            if (showPopup) {
+                openBookingConfirmPopup(bookingConfirmedPopupMessage);
+            }
+        };
+
+        if (bookingAlert) {
+            const initialBookingIds = JSON.parse(bookingAlert.dataset.bookingIds || '[]')
+                .map((id) => Number(id))
+                .filter((id) => Number.isFinite(id));
+            const acknowledgedBookings = getAcknowledgedBookings();
+            const newInitialBookingIds = initialBookingIds.filter((id) => !acknowledgedBookings.includes(id));
+
+            if (newInitialBookingIds.length > 0) {
+                showBookingConfirmationPopup(newInitialBookingIds, true);
+            } else {
+                bookingAlert.style.display = 'none';
+            }
+        }
+
+        let isPollingConfirmations = false;
+        const pollBookingConfirmations = async () => {
+            if (isPollingConfirmations || document.visibilityState === 'hidden') {
+                return;
+            }
+
+            isPollingConfirmations = true;
+            try {
+                const response = await fetch(confirmationsEndpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = await response.json();
+                const confirmedBookingIds = Array.isArray(payload.confirmed_booking_ids)
+                    ? payload.confirmed_booking_ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+                    : [];
+                const acknowledgedBookings = getAcknowledgedBookings();
+                const newBookingIds = confirmedBookingIds.filter((id) => !acknowledgedBookings.includes(id));
+
+                if (newBookingIds.length > 0) {
+                    showBookingConfirmationPopup(newBookingIds, true);
+                }
+            } catch (error) {
+                console.error('Unable to fetch booking confirmations.', error);
+            } finally {
+                isPollingConfirmations = false;
+            }
+        };
+
+        const confirmationPollingInterval = window.setInterval(pollBookingConfirmations, 15000);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                pollBookingConfirmations();
+            }
+        });
+        pollBookingConfirmations();
+
+        // Clear localStorage on logout
+        const logoutForm = document.getElementById('logoutForm');
+        if (logoutForm) {
+            logoutForm.addEventListener('submit', () => {
+                localStorage.removeItem('acknowledgedBookings');
+                window.clearInterval(confirmationPollingInterval);
+            });
+        }
+    </script>
+</body>
+</html>
