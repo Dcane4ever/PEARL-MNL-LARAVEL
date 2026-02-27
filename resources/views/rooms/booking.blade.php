@@ -1648,6 +1648,7 @@
         const bookingCancelledAlert = document.getElementById('bookingCancelledAlert');
         const confirmedStorageKey = 'acknowledgedConfirmedBookings';
         const cancelledStorageKey = 'acknowledgedCancelledBookings';
+        const submittedStorageKey = 'acknowledgedSubmittedBookings';
         const legacyStorageKey = 'acknowledgedBookings';
         const bookingConfirmedPopupMessage = 'Booking is confirmed, please proceed to pay online or through the front desk.';
         const bookingCancelledPopupMessage = 'Your booking is cancelled, contact the support desk for more information.';
@@ -1752,12 +1753,25 @@
         }
 
         const bookingSubmissionMessage = @json(session('status'));
+        const submittedBookingId = Number(@json(session('submitted_booking_id')));
         if (bookingSubmissionMessage) {
-            openBookingConfirmPopup({
-                title: 'Booking Submitted',
-                message: bookingSubmissionMessage,
-                type: 'submitted'
-            });
+            if (Number.isFinite(submittedBookingId)) {
+                const acknowledgedSubmitted = getAcknowledgedBookings(submittedStorageKey);
+                if (!acknowledgedSubmitted.includes(submittedBookingId)) {
+                    setAcknowledgedBookings(submittedStorageKey, [...new Set([...acknowledgedSubmitted, submittedBookingId])]);
+                    openBookingConfirmPopup({
+                        title: 'Booking Submitted',
+                        message: bookingSubmissionMessage,
+                        type: 'submitted'
+                    });
+                }
+            } else {
+                openBookingConfirmPopup({
+                    title: 'Booking Submitted',
+                    message: bookingSubmissionMessage,
+                    type: 'submitted'
+                });
+            }
         }
 
         let isPollingConfirmations = false;
@@ -1858,16 +1872,7 @@
 
         window.dispatchEvent(new Event('pearl:live-ready'));
 
-        // Clear localStorage on logout
-        const logoutForm = document.getElementById('logoutForm');
-        if (logoutForm) {
-            logoutForm.addEventListener('submit', () => {
-                localStorage.removeItem(confirmedStorageKey);
-                localStorage.removeItem(cancelledStorageKey);
-                localStorage.removeItem(legacyStorageKey);
-                window.clearInterval(confirmationPollingInterval);
-            });
-        }
+        // Keep acknowledgement keys on logout so popups show once per booking/device.
     </script>
 </body>
 </html>

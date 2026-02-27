@@ -62,7 +62,7 @@
                             </div>
                             <div>
                                 <span class="highlight-label">Inventory</span>
-                                <span class="highlight-value">16th & 17th floor</span>
+                                <span class="highlight-value">15th & 16th floor</span>
                             </div>
                             <div>
                                 <span class="highlight-label">Admin Access</span>

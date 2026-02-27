@@ -242,7 +242,9 @@ class BookingController extends Controller
             'We received your booking request and valid ID. Our admin team will verify your document before confirmation.'
         );
 
-        return back()->with('status', 'Booking submitted with ID. Awaiting admin verification and confirmation.');
+        return back()
+            ->with('status', 'Booking submitted with ID. Awaiting admin verification and confirmation.')
+            ->with('submitted_booking_id', $booking->id);
     }
 
     public function showPayment(Request $request, Booking $booking)
