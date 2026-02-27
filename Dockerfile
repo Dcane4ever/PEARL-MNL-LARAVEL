@@ -12,7 +12,7 @@ COPY public public
 COPY vite.config.* postcss.config.* tailwind.config.* ./
 RUN npm run build
 
-FROM php:8.3-fpm-alpine AS app
+FROM php:8.4-fpm-alpine AS app
 WORKDIR /var/www/html
 
 RUN apk add --no-cache \
