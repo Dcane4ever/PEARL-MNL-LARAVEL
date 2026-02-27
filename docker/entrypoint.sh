@@ -13,6 +13,7 @@ if [ "${RUN_MIGRATIONS}" = "1" ]; then
   php artisan migrate --force
 fi
 
+php artisan package:discover --ansi
 php artisan config:cache
 php artisan route:cache || true
 php artisan view:cache || true
