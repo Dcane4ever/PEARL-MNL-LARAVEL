@@ -15,11 +15,12 @@ RUN npm run build
 FROM php:8.4-fpm-alpine AS app
 WORKDIR /var/www/html
 
-RUN apk add --no-cache \
+    RUN apk add --no-cache \
         nginx \
         supervisor \
         bash \
         curl \
+        ca-certificates \
         libpng-dev \
         libjpeg-turbo-dev \
         freetype-dev \
