@@ -905,7 +905,7 @@
             date.setDate(date.getDate() + days);
             return date.toISOString().split('T')[0];
         };
-        const MAX_STAY_DAYS = 5;
+        const MAX_STAY_DAYS = 90;
         const getMaxCheckoutDateKey = (checkInKey) => {
             if (!checkInKey) return '';
             return addDays(checkInKey, MAX_STAY_DAYS);

@@ -16,10 +16,12 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminController extends Controller
@@ -525,6 +527,7 @@ class AdminController extends Controller
     {
         $data = $request->validate([
             'inventory_date' => ['required', 'date', 'after_or_equal:today'],
+            'inventory_end_date' => ['nullable', 'date', 'after_or_equal:inventory_date'],
             'inventory' => ['array'],
             'inventory.*' => ['array'],
             'inventory.*.*' => ['nullable', 'integer', 'min:0', 'max:999'],
@@ -558,73 +561,109 @@ class AdminController extends Controller
             ]);
         }
 
+        $startDate = Carbon::parse($data['inventory_date'])->startOfDay();
+        $endDateValue = $data['inventory_end_date'] ?? $data['inventory_date'];
+        $endDate = Carbon::parse($endDateValue)->startOfDay();
+
+        if ($endDate->lt($startDate)) {
+            return back()->withErrors([
+                'inventory_end_date' => 'End date must be the same as or after the start date.',
+            ]);
+        }
+
+        if ($startDate->diffInDays($endDate) > 90) {
+            return back()->withErrors([
+                'inventory_end_date' => 'Date range cannot exceed 90 days.',
+            ]);
+        }
+
+        $dateKeys = [];
+        for ($cursor = $startDate->copy(); $cursor->lte($endDate); $cursor->addDay()) {
+            $dateKeys[] = $cursor->toDateString();
+        }
+
         $floorTotalLimit = 15;
         $isAdditive = $request->boolean('inventory_additive');
 
-        $existingInventory = DailyRoomInventory::where('inventory_date', $data['inventory_date'])
-            ->whereIn('floor_id', $bookableFloorIds)
-            ->whereIn('room_id', array_keys($roomLimitsById))
-            ->get()
-            ->keyBy(fn ($item) => $item->floor_id.'|'.$item->room_id);
+        DB::beginTransaction();
+        try {
+            foreach ($dateKeys as $dateKey) {
+                $existingInventory = DailyRoomInventory::where('inventory_date', $dateKey)
+                    ->whereIn('floor_id', $bookableFloorIds)
+                    ->whereIn('room_id', array_keys($roomLimitsById))
+                    ->get()
+                    ->keyBy(fn ($item) => $item->floor_id.'|'.$item->room_id);
 
-        foreach ($data['inventory'] ?? [] as $floorId => $rooms) {
-            $floorId = (int) $floorId;
-            if (! in_array($floorId, $bookableFloorIds, true)) {
-                return back()->withErrors([
-                    'inventory' => 'Only floors 15 and 16 can be configured for room availability.',
-                ]);
-            }
+                foreach ($data['inventory'] ?? [] as $floorId => $rooms) {
+                    $floorId = (int) $floorId;
+                    if (! in_array($floorId, $bookableFloorIds, true)) {
+                        throw ValidationException::withMessages([
+                            'inventory' => 'Only floors 15 and 16 can be configured for room availability.',
+                        ]);
+                    }
 
-            $requestedByRoom = [];
-            $floorTotal = 0;
-            foreach ($roomLimitsById as $roomId => $roomLimit) {
-                $value = (int) ($rooms[$roomId] ?? 0);
-                $existing = (int) ($existingInventory->get($floorId.'|'.$roomId)?->available_rooms ?? 0);
-                $totalRooms = $isAdditive ? $existing + $value : $value;
+                    $requestedByRoom = [];
+                    $floorTotal = 0;
+                    foreach ($roomLimitsById as $roomId => $roomLimit) {
+                        $value = (int) ($rooms[$roomId] ?? 0);
+                        $existing = (int) ($existingInventory->get($floorId.'|'.$roomId)?->available_rooms ?? 0);
+                        $totalRooms = $isAdditive ? $existing + $value : $value;
 
-                if ($totalRooms > $roomLimit) {
-                    return back()->withErrors([
-                        'inventory' => 'Per-floor limit exceeded. Superior max is 11 and Junior max is 4.',
-                    ]);
+                        if ($totalRooms > $roomLimit) {
+                            throw ValidationException::withMessages([
+                                'inventory' => 'Per-floor limit exceeded. Superior max is 11 and Junior max is 4.',
+                            ]);
+                        }
+                        $requestedByRoom[$roomId] = $totalRooms;
+                        $floorTotal += $totalRooms;
+                    }
+
+                    if ($floorTotal > $floorTotalLimit) {
+                        throw ValidationException::withMessages([
+                            'inventory' => 'Total rooms per floor cannot exceed 15 (4 Superior + 11 Junior).',
+                        ]);
+                    }
+
+                    foreach ($requestedByRoom as $roomId => $totalRooms) {
+                        DailyRoomInventory::updateOrCreate(
+                            [
+                                'floor_id' => $floorId,
+                                'room_id' => $roomId,
+                                'inventory_date' => $dateKey,
+                            ],
+                            ['available_rooms' => (int) ($totalRooms ?? 0)]
+                        );
+                    }
                 }
-                $requestedByRoom[$roomId] = $totalRooms;
-                $floorTotal += $totalRooms;
             }
-
-            if ($floorTotal > $floorTotalLimit) {
-                return back()->withErrors([
-                    'inventory' => 'Total rooms per floor cannot exceed 15 (4 Superior + 11 Junior).',
-                ]);
-            }
-
-            foreach ($requestedByRoom as $roomId => $totalRooms) {
-                DailyRoomInventory::updateOrCreate(
-                    [
-                        'floor_id' => $floorId,
-                        'room_id' => $roomId,
-                        'inventory_date' => $data['inventory_date'],
-                    ],
-                    ['available_rooms' => (int) ($totalRooms ?? 0)]
-                );
-            }
+            DB::commit();
+        } catch (\Throwable $exception) {
+            DB::rollBack();
+            throw $exception;
         }
 
-        event(new InventoryUpdated($data['inventory_date']));
+        event(new InventoryUpdated($startDate->toDateString()));
+
+        $rangeLabel = $startDate->equalTo($endDate)
+            ? $startDate->toDateString()
+            : $startDate->toDateString().' to '.$endDate->toDateString();
+        $successMessage = 'Floor inventory updated for '.$rangeLabel.'.';
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'ok' => true,
-                'message' => 'Floor inventory updated for '.$data['inventory_date'].'.',
-                'inventory_date' => $data['inventory_date'],
+                'message' => $successMessage,
+                'inventory_date' => $startDate->toDateString(),
+                'inventory_end_date' => $endDate->toDateString(),
             ]);
         }
 
         return redirect()
             ->route('admin.operations', [
-                'inventory_date' => $data['inventory_date'],
+                'inventory_date' => $startDate->toDateString(),
                 'open_inventory' => 1,
             ])
-            ->with('status', 'Floor inventory updated for '.$data['inventory_date'].'.');
+            ->with('status', $successMessage);
     }
 
     public function updateRooms(Request $request): RedirectResponse

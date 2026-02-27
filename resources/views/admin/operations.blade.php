@@ -99,6 +99,133 @@
             border-color: #f3cc86;
         }
 
+        .admin-operations-page .calendar-status-dots {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .admin-operations-page .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            display: inline-block;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+        }
+
+        .admin-operations-page .status-dot-pending,
+        .admin-operations-page .status-dot-pending_verification {
+            background: #f59e0b;
+        }
+
+        .admin-operations-page .status-dot-confirmed {
+            background: #22c55e;
+        }
+
+        .admin-operations-page .status-dot-checked_in,
+        .admin-operations-page .status-dot-checkout_scheduled {
+            background: #3b82f6;
+        }
+
+        .admin-operations-page .status-dot-cancelled {
+            background: #ef4444;
+        }
+
+        .admin-operations-page .status-dot-available {
+            background: #14b8a6;
+        }
+
+        .admin-operations-page .calendar-empty-inline {
+            margin-top: 6px;
+            font-size: 0.75rem;
+            color: var(--ops-text-dim);
+        }
+
+        .admin-operations-page .calendar-day-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .admin-operations-page .calendar-day-footer .btn {
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            border-radius: 8px;
+        }
+
+        .admin-operations-page .calendar-unavailable-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            color: #64748b;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        html.dark-theme .admin-operations-page .calendar-unavailable-pill {
+            background: #1e293b;
+            color: #94a3b8;
+        }
+
+        .admin-operations-page .day-details-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .admin-operations-page .day-details-badge {
+            border: 1px solid var(--ops-border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            background: var(--ops-surface-muted);
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--ops-text);
+        }
+
+        .admin-operations-page .day-details-badge .legend-dot {
+            width: 8px;
+            height: 8px;
+        }
+
+        .admin-operations-page .day-details-section h4 {
+            margin: 0 0 8px;
+            font-size: 0.9rem;
+            color: var(--ops-text);
+        }
+
+        .admin-operations-page .day-details-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .admin-operations-page .day-details-item {
+            border: 1px solid var(--ops-border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            background: var(--ops-surface-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.82rem;
+            color: var(--ops-text);
+        }
+
+        .admin-operations-page .day-details-item span {
+            color: var(--ops-text-dim);
+        }
+
         .checkout-queue-widget {
             margin-bottom: 16px;
             border: 1px solid #cbd5e1;
@@ -269,6 +396,10 @@
             border-color: #a16207;
         }
 
+        html.dark-theme .admin-operations-page .status-dot {
+            box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.95);
+        }
+
         .room-current-set {
             margin-top: 4px;
             font-size: 0.78rem;
@@ -400,6 +531,7 @@
         }
 
         html.dark-theme body > #inventoryModal .form-select,
+        html.dark-theme body > #inventoryModal .form-input,
         html.dark-theme body > #inventoryModal .room-input,
         html.dark-theme body > #inventoryModal .room-btn {
             background: #0b1220 !important;
@@ -971,11 +1103,39 @@
         }
 
         body.admin-operations-page .form-select,
+        body.admin-operations-page .form-input,
         body.admin-operations-page .room-input,
         body.admin-operations-page .room-btn {
             background: var(--ops-surface);
             border-color: var(--ops-border-strong);
             color: var(--ops-text);
+        }
+
+        body.admin-operations-page .inventory-date-range {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        body.admin-operations-page .inventory-date-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        body.admin-operations-page .inventory-date-field span {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--ops-text-dim);
+        }
+
+        body.admin-operations-page .form-input {
+            padding: 9px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--ops-border-strong);
+            font-family: inherit;
+            font-size: 0.88rem;
         }
 
         body.admin-operations-page .room-card {
@@ -1504,7 +1664,7 @@
                 </div>
 
                 @php
-                    $calendarBookings = $pendingBookings->concat($confirmedBookings);
+                    $calendarBookings = $pendingBookings->concat($confirmedBookings)->concat($cancelledBookings);
                     $bookingsByDate = $calendarBookings->groupBy(fn ($booking) => $booking->check_in_date);
                 @endphp
 
@@ -1552,17 +1712,50 @@
                                                 } elseif ($dayBookings->contains(fn ($booking) => in_array($booking->status, ['pending', 'pending_verification'], true))) {
                                                     $highlightClass = 'has-pending';
                                                 }
+
+                                                $dayStatusCounts = $dayBookings->groupBy('status')->map->count();
+                                                $availabilityTotal = 0;
+                                                foreach ($inventoryRooms as $inventoryRoom) {
+                                                    foreach ($floors as $floor) {
+                                                        $inventoryKey = $dateKey.'|'.$floor->id.'-'.$inventoryRoom->id;
+                                                        $availabilityTotal += (int) ($inventory->get($inventoryKey)?->available_rooms ?? 0);
+                                                    }
+                                                }
+
+                                                $dayBookingsPayload = $dayBookings->map(function ($booking) {
+                                                    return [
+                                                        'id' => $booking->id,
+                                                        'guest' => $booking->user?->name ?? 'Guest',
+                                                        'room' => $booking->room?->name ?? 'Room',
+                                                        'status' => $booking->status,
+                                                        'check_in_time' => $booking->check_in_time,
+                                                        'check_out_time' => $booking->check_out_time,
+                                                        'rooms_count' => $booking->rooms_count,
+                                                    ];
+                                                })->values();
                                             @endphp
                                             <div class="calendar-day {{ $highlightClass }} {{ $isPastDate ? 'is-past-date' : '' }}" data-inventory-date="{{ $dateKey }}">
                                                 <div class="calendar-date">
                                                     <span class="calendar-weekday">{{ $day->format('D') }}</span>
                                                     <span class="calendar-daynum">{{ $day->format('d') }}</span>
                                                 </div>
-                                                @if ($dayBookings->count() > 0)
+                                                @if (! $isPastDate && ($availabilityTotal > 0 || $dayStatusCounts->count() > 0))
                                                     <div class="calendar-status-dots">
-                                                        @foreach ($dayBookings as $booking)
-                                                            <span class="status-dot status-dot-{{ $booking->status }}" title="{{ ucfirst(str_replace('_', ' ', $booking->status)) }}: {{ $booking->room->name }} - {{ $booking->user->name }}"></span>
-                                                        @endforeach
+                                                        @if ($availabilityTotal > 0)
+                                                            <span class="status-dot status-dot-available" title="Available rooms set"></span>
+                                                        @endif
+                                                        @if ($dayStatusCounts->has('pending') || $dayStatusCounts->has('pending_verification'))
+                                                            <span class="status-dot status-dot-pending" title="Pending booking(s)"></span>
+                                                        @endif
+                                                        @if ($dayStatusCounts->has('confirmed'))
+                                                            <span class="status-dot status-dot-confirmed" title="Confirmed booking(s)"></span>
+                                                        @endif
+                                                        @if ($dayStatusCounts->has('checked_in') || $dayStatusCounts->has('checkout_scheduled'))
+                                                            <span class="status-dot status-dot-checked_in" title="Checked in / checkout scheduled"></span>
+                                                        @endif
+                                                        @if ($dayStatusCounts->has('cancelled'))
+                                                            <span class="status-dot status-dot-cancelled" title="Cancelled booking(s)"></span>
+                                                        @endif
                                                     </div>
                                                 @endif
                                                 <div class="calendar-events">
@@ -1625,6 +1818,26 @@
                                                     @empty
                                                         <div class="calendar-empty">No bookings</div>
                                                     @endforelse
+                                                </div>
+                                                <div class="calendar-day-footer">
+                                                    <div class="calendar-empty-inline">
+                                                        @if ($isPastDate)
+                                                            <span class="calendar-unavailable-pill">Unavailable</span>
+                                                        @else
+                                                            {{ $dayBookings->count() > 0 ? $dayBookings->count().' booking(s)' : 'No bookings' }}
+                                                        @endif
+                                                    </div>
+                                                    @if (! $isPastDate)
+                                                        <button
+                                                            type="button"
+                                                            class="btn btn-outline btn-xs js-day-details"
+                                                            data-date="{{ $dateKey }}"
+                                                            data-status-counts='@json($dayStatusCounts)'
+                                                            data-bookings='@json($dayBookingsPayload)'
+                                                        >
+                                                            View details
+                                                        </button>
+                                                    @endif
                                                 </div>
                                             </div>
                                         @endforeach
@@ -2092,7 +2305,34 @@
                         <div class="modal-body">
                             <form method="POST" action="{{ route('admin.inventory.update') }}" id="inventoryForm">
                                 @csrf
-                                <input type="hidden" name="inventory_date" id="modalInventoryDate" value="{{ $inventoryDate }}">
+                                <div class="form-group">
+                                    <label class="form-label">DATE RANGE (UP TO 90 DAYS)</label>
+                                    <div class="inventory-date-range">
+                                        <div class="inventory-date-field">
+                                            <span>Start date</span>
+                                            <input
+                                                type="date"
+                                                class="form-input"
+                                                name="inventory_date"
+                                                id="modalInventoryDate"
+                                                value="{{ $inventoryDate }}"
+                                                min="{{ \Carbon\Carbon::today()->toDateString() }}"
+                                            >
+                                        </div>
+                                        <div class="inventory-date-field">
+                                            <span>End date</span>
+                                            <input
+                                                type="date"
+                                                class="form-input"
+                                                name="inventory_end_date"
+                                                id="modalInventoryEndDate"
+                                                value="{{ $inventoryDate }}"
+                                                min="{{ \Carbon\Carbon::today()->toDateString() }}"
+                                            >
+                                        </div>
+                                    </div>
+                                    <div class="room-distribution-hint">Set availability across a date range (max 90 days). Leave the end date the same as the start date for a single day.</div>
+                                </div>
                                 
                                 <div class="form-group">
                                     <label class="form-label">TARGET FLOORS</label>
@@ -2181,6 +2421,31 @@
                         <div class="modal-body">
                             <div class="modal-footer">
                                 <button class="btn btn-primary" type="button" id="inventorySuccessOk">OK</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-overlay is-hidden" id="dayDetailsModal">
+                    <div class="modal-content" style="width:min(720px, 94vw);">
+                        <div class="modal-header">
+                            <div>
+                                <h3><i class="fas fa-calendar-day"></i> Day Details</h3>
+                                <p id="dayDetailsDate">Selected date</p>
+                            </div>
+                            <button class="modal-close" id="closeDayDetailsModal" type="button">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="day-details-summary" id="dayDetailsSummary"></div>
+                            <div class="day-details-section">
+                                <h4>Availability</h4>
+                                <div class="day-details-list" id="dayAvailabilityList"></div>
+                            </div>
+                            <div class="day-details-section" style="margin-top: 16px;">
+                                <h4>Bookings</h4>
+                                <div class="day-details-list" id="dayBookingsList"></div>
                             </div>
                         </div>
                     </div>
@@ -2472,7 +2737,7 @@
 
         dateCards.forEach((card) => {
             card.addEventListener('click', (event) => {
-                if (event.target.closest('.calendar-events')) {
+                if (event.target.closest('.calendar-events') || event.target.closest('.calendar-day-footer')) {
                     return;
                 }
 
@@ -2501,6 +2766,13 @@
         const closeInventorySuccessModal = document.getElementById('closeInventorySuccessModal');
         const inventorySuccessOk = document.getElementById('inventorySuccessOk');
         const inventoryAdditiveToggle = document.getElementById('inventoryAdditiveToggle');
+        const modalInventoryEndDate = document.getElementById('modalInventoryEndDate');
+        const dayDetailsModal = document.getElementById('dayDetailsModal');
+        const closeDayDetailsModal = document.getElementById('closeDayDetailsModal');
+        const dayDetailsDate = document.getElementById('dayDetailsDate');
+        const dayDetailsSummary = document.getElementById('dayDetailsSummary');
+        const dayAvailabilityList = document.getElementById('dayAvailabilityList');
+        const dayBookingsList = document.getElementById('dayBookingsList');
 
         // Inventory data from server
         const inventoryData = @json($inventory);
@@ -2514,7 +2786,13 @@
             selectedInventoryDate = todayDateKey;
         }
 
+        const maxInventoryRangeDays = 90;
         const getInventoryDateKey = () => modalInventoryDate?.value || selectedInventoryDate;
+        const getInventoryRange = () => {
+            const start = modalInventoryDate?.value || selectedInventoryDate;
+            const end = modalInventoryEndDate?.value || start;
+            return { start, end };
+        };
 
         const resolveTargetFloors = (floorRange) => {
             if (floorRange === 'all') {
@@ -2545,6 +2823,46 @@
 
                 label.textContent = `Currently set: ${total} room(s) across ${floorsWithData} floor(s)`;
             });
+        };
+
+        const syncInventoryRangeLabel = () => {
+            if (!modalInventoryDateText) return;
+            const { start, end } = getInventoryRange();
+            if (!start) {
+                modalInventoryDateText.textContent = 'Select a date range to configure availability.';
+                return;
+            }
+            if (!end || start === end) {
+                modalInventoryDateText.textContent = `Selected date: ${formatInventoryDateLabel(start)}`;
+                return;
+            }
+            modalInventoryDateText.textContent = `Selected range: ${formatInventoryDateLabel(start)} to ${formatInventoryDateLabel(end)}`;
+        };
+
+        const clampInventoryRange = () => {
+            if (!modalInventoryDate || !modalInventoryEndDate) return;
+            const startValue = modalInventoryDate.value;
+            if (!startValue) return;
+            const startDate = new Date(startValue + 'T00:00:00');
+            let endValue = modalInventoryEndDate.value || startValue;
+            let endDate = new Date(endValue + 'T00:00:00');
+
+            if (Number.isNaN(startDate.getTime())) return;
+
+            if (Number.isNaN(endDate.getTime()) || endDate < startDate) {
+                endDate = new Date(startDate);
+                endValue = startValue;
+            }
+
+            const diffDays = Math.floor((endDate - startDate) / 86400000);
+            if (diffDays > maxInventoryRangeDays) {
+                const capped = new Date(startDate);
+                capped.setDate(capped.getDate() + maxInventoryRangeDays);
+                endDate = capped;
+                endValue = capped.toISOString().slice(0, 10);
+            }
+
+            modalInventoryEndDate.value = endValue;
         };
 
         const getRoomLimit = (roomId) => {
@@ -2635,9 +2953,10 @@
                 return;
             }
             modalInventoryDate.value = dateValue;
-            if (modalInventoryDateText) {
-                modalInventoryDateText.textContent = `Selected date: ${formatInventoryDateLabel(dateValue)}`;
+            if (modalInventoryEndDate) {
+                modalInventoryEndDate.value = dateValue;
             }
+            syncInventoryRangeLabel();
             if (floorSelector) {
                 floorSelector.value = floorSelector.value || 'all';
             }
@@ -2645,9 +2964,18 @@
             openModal(inventoryModal);
         }
 
-        if (modalInventoryDateText) {
-            modalInventoryDateText.textContent = `Selected date: ${formatInventoryDateLabel(selectedInventoryDate)}`;
-        }
+        syncInventoryRangeLabel();
+
+        modalInventoryDate?.addEventListener('change', () => {
+            clampInventoryRange();
+            syncInventoryRangeLabel();
+            loadInventoryForFloors(floorSelector?.value || 'all');
+        });
+
+        modalInventoryEndDate?.addEventListener('change', () => {
+            clampInventoryRange();
+            syncInventoryRangeLabel();
+        });
 
         closeInventoryBtn?.addEventListener('click', () => {
             closeModal(inventoryModal);
@@ -2779,12 +3107,33 @@
                 alert('You can only set room availability for today or future dates.');
                 return;
             }
+
+            const range = getInventoryRange();
+            const startDate = new Date(range.start + 'T00:00:00');
+            const endDate = new Date(range.end + 'T00:00:00');
+            if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+                alert('Please choose a valid start and end date.');
+                return;
+            }
+            if (endDate < startDate) {
+                alert('End date must be the same as or after the start date.');
+                return;
+            }
+            const diffDays = Math.floor((endDate - startDate) / 86400000);
+            if (diffDays > maxInventoryRangeDays) {
+                alert(`Date range cannot exceed ${maxInventoryRangeDays} days.`);
+                return;
+            }
             
             const formData = new FormData(inventoryForm);
             const floorRange = floorSelector.value;
             const targetFloors = resolveTargetFloors(floorRange);
             const isAdditiveMode = Boolean(inventoryAdditiveToggle?.checked);
             const inventoryDateKey = getInventoryDateKey();
+
+            if (range.end) {
+                formData.set('inventory_end_date', range.end);
+            }
 
             if (targetFloors.length === 0) {
                 alert('Please select floor 15, floor 16, or apply to both bookable floors.');
@@ -2940,7 +3289,7 @@
         const closeIdPreviewModal = document.getElementById('closeIdPreviewModal');
         const closeIdPreviewFooter = document.getElementById('closeIdPreviewFooter');
         const roomSettingsToggles = document.querySelectorAll('.room-settings-toggle input[type="checkbox"]');
-        const managedModals = [inventoryModal, inventorySuccessModal, pendingModal, checkoutQueueModal, bookingDetailsModal, idPreviewModal].filter(Boolean);
+        const managedModals = [inventoryModal, inventorySuccessModal, pendingModal, checkoutQueueModal, bookingDetailsModal, idPreviewModal, dayDetailsModal].filter(Boolean);
 
         // Keep overlays at body level to avoid fixed-position issues from transformed ancestors.
         managedModals.forEach((modal) => {
@@ -2973,6 +3322,107 @@
                 openModal(pendingModal);
             });
         }
+
+        closeDayDetailsModal?.addEventListener('click', () => {
+            closeModal(dayDetailsModal);
+        });
+
+        const escapeHtml = (value) => {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+
+        const renderDayDetails = (button) => {
+            if (!button || !dayDetailsModal) return;
+
+            const dateKey = button.dataset.date || '';
+            const statusCounts = button.dataset.statusCounts ? JSON.parse(button.dataset.statusCounts) : {};
+            const bookings = button.dataset.bookings ? JSON.parse(button.dataset.bookings) : [];
+
+            if (dateKey && dateKey < todayDateKey) {
+                return;
+            }
+
+            if (dayDetailsDate) {
+                dayDetailsDate.textContent = dateKey ? formatInventoryDateLabel(dateKey) : 'Selected date';
+            }
+
+            const pendingCount = (statusCounts.pending || 0) + (statusCounts.pending_verification || 0);
+            const confirmedCount = (statusCounts.confirmed || 0);
+            const checkedInCount = (statusCounts.checked_in || 0) + (statusCounts.checkout_scheduled || 0);
+            const cancelledCount = (statusCounts.cancelled || 0);
+
+            let totalAvailableAll = 0;
+            let availabilityMarkup = '';
+            roomsData.forEach((room) => {
+                let total = 0;
+                floorsData.forEach((floor) => {
+                    const key = `${dateKey}|${floor.id}-${room.id}`;
+                    total += Number(inventoryData?.[key]?.available_rooms ?? 0);
+                });
+                totalAvailableAll += total;
+                availabilityMarkup += `
+                    <div class="day-details-item">
+                        <strong>${escapeHtml(room.name)}</strong>
+                        <span>${total} room(s) available</span>
+                    </div>
+                `;
+            });
+
+            if (dayAvailabilityList) {
+                dayAvailabilityList.innerHTML = availabilityMarkup || '<div class="day-details-item">No availability data set.</div>';
+            }
+
+            const summaryItems = [
+                { label: 'Available', count: totalAvailableAll, dot: 'legend-dot', color: 'status-dot-available' },
+                { label: 'Pending', count: pendingCount, dot: 'legend-dot', color: 'status-dot-pending' },
+                { label: 'Confirmed', count: confirmedCount, dot: 'legend-dot', color: 'status-dot-confirmed' },
+                { label: 'Checked in', count: checkedInCount, dot: 'legend-dot', color: 'status-dot-checked_in' },
+                { label: 'Cancelled', count: cancelledCount, dot: 'legend-dot', color: 'status-dot-cancelled' },
+            ];
+
+            if (dayDetailsSummary) {
+                dayDetailsSummary.innerHTML = summaryItems.map((item) => {
+                    const countLabel = `: ${item.count}`;
+                    return `
+                        <div class="day-details-badge">
+                            <span class="status-dot ${item.color}"></span>
+                            <strong>${item.label}${countLabel}</strong>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            if (dayBookingsList) {
+                if (!bookings.length) {
+                    dayBookingsList.innerHTML = '<div class="day-details-item">No bookings for this date.</div>';
+                } else {
+                    dayBookingsList.innerHTML = bookings.map((booking) => {
+                        const statusLabel = (booking.status || '').replace(/_/g, ' ');
+                        return `
+                            <div class="day-details-item">
+                                <strong>#${escapeHtml(booking.id)} · ${escapeHtml(booking.room)}</strong>
+                                <span>${escapeHtml(booking.guest)} · ${escapeHtml(booking.check_in_time)} - ${escapeHtml(booking.check_out_time)}</span>
+                                <span>Status: ${escapeHtml(statusLabel)} · Rooms: ${escapeHtml(booking.rooms_count)}</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            openModal(dayDetailsModal);
+        };
+
+        document.querySelectorAll('.js-day-details').forEach((btn) => {
+            btn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                renderDayDetails(btn);
+            });
+        });
 
         if (closePendingBtn) {
             closePendingBtn.addEventListener('click', () => {
@@ -3422,7 +3872,7 @@
         inventorySuccessOk?.addEventListener('click', () => closeModal(inventorySuccessModal));
 
         // Close modals when clicking outside
-        [inventoryModal, inventorySuccessModal, pendingModal, checkoutQueueModal, bookingDetailsModal, idPreviewModal].forEach(modal => {
+        [inventoryModal, inventorySuccessModal, pendingModal, checkoutQueueModal, bookingDetailsModal, idPreviewModal, dayDetailsModal].forEach(modal => {
             modal?.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     if (modal === idPreviewModal) {

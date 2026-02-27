@@ -85,10 +85,10 @@ class BookingController extends Controller
 
         $checkInDate = Carbon::parse($data['check_in_date'])->startOfDay();
         $checkOutDate = Carbon::parse($data['check_out_date'])->startOfDay();
-        $maxCheckoutDate = $checkInDate->copy()->addDays(5);
+        $maxCheckoutDate = $checkInDate->copy()->addDays(90);
         if ($checkOutDate->gt($maxCheckoutDate)) {
             return back()->withErrors([
-                'check_out_date' => 'Checkout date can be at most 5 days after check-in.',
+                'check_out_date' => 'Checkout date can be at most 90 days after check-in.',
             ])->withInput();
         }
 
