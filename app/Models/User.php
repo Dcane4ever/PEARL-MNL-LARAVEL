@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Booking;
+use App\Services\BrevoMailer;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -54,5 +55,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function bookings()
     {
         return $this->hasMany(Booking::class);
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        app(BrevoMailer::class)->sendVerificationEmail($this);
     }
 }

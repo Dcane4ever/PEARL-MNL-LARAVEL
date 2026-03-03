@@ -7,12 +7,12 @@ use App\Mail\LoginActivityCheckMail;
 use App\Mail\MagicLoginLinkMail;
 use App\Models\MagicLoginToken;
 use App\Models\User;
+use App\Services\BrevoMailer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -52,17 +52,21 @@ class MagicLoginController extends Controller
 
         $magicLink = route('magic-login.consume', ['token' => $plainToken]);
 
-        try {
-            Mail::to($user->email)->send(new MagicLoginLinkMail(
+        $sent = app(BrevoMailer::class)->sendMailable(
+            new MagicLoginLinkMail(
                 user: $user,
                 magicLink: $magicLink,
                 expiresAt: $token->expires_at
-            ));
-        } catch (\Throwable $exception) {
+            ),
+            $user->email,
+            $user->name
+        );
+
+        if (! $sent) {
             Log::error('Magic login email send failed.', [
                 'user_id' => $user->id,
                 'email' => $user->email,
-                'error' => $exception->getMessage(),
+                'error' => 'Brevo API send failed.',
             ]);
 
             return back()->withErrors([
@@ -117,14 +121,18 @@ class MagicLoginController extends Controller
             ['loginToken' => $magicToken->id, 'action' => 'no']
         );
 
-        Mail::to($magicToken->user->email)->send(new LoginActivityCheckMail(
-            user: $magicToken->user,
-            yesUrl: $yesUrl,
-            noUrl: $noUrl,
-            ipAddress: (string) $request->ip(),
-            userAgent: (string) $request->userAgent(),
-            loggedInAt: now()
-        ));
+        app(BrevoMailer::class)->sendMailable(
+            new LoginActivityCheckMail(
+                user: $magicToken->user,
+                yesUrl: $yesUrl,
+                noUrl: $noUrl,
+                ipAddress: (string) $request->ip(),
+                userAgent: (string) $request->userAgent(),
+                loggedInAt: now()
+            ),
+            $magicToken->user->email,
+            $magicToken->user->name
+        );
 
         return redirect()->route('rooms.booking')
             ->with('status', 'You are now signed in. Welcome back!');

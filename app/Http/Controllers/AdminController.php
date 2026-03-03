@@ -12,6 +12,7 @@ use App\Models\DailyRoomInventory;
 use App\Models\Floor;
 use App\Models\Room;
 use App\Models\User;
+use App\Services\BrevoMailer;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,7 +20,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -512,13 +512,17 @@ class AdminController extends Controller
 
     private function sendBookingEmail(Booking $booking, string $subjectLine, string $messageLine): void
     {
-        try {
-            Mail::to($booking->user->email)->send(new BookingStatusMail($booking, $subjectLine, $messageLine));
-        } catch (\Throwable $exception) {
+        $sent = app(BrevoMailer::class)->sendMailable(
+            new BookingStatusMail($booking, $subjectLine, $messageLine),
+            $booking->user->email,
+            $booking->user->name
+        );
+
+        if (! $sent) {
             Log::warning('Admin-triggered booking email send failed.', [
                 'booking_id' => $booking->id,
                 'email' => $booking->user->email,
-                'error' => $exception->getMessage(),
+                'error' => 'Brevo API send failed.',
             ]);
         }
     }

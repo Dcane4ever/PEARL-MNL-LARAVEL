@@ -29,11 +29,16 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $minAge = 16;
+        $minBirthdate = now()->subYears($minAge)->toDateString();
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'birthdate' => ['required', 'date', 'before:today'],
+            'birthdate' => ['required', 'date', 'before_or_equal:'.$minBirthdate],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ], [
+            'birthdate.before_or_equal' => "You must be at least {$minAge} years old to register.",
         ]);
 
         $user = User::create([
