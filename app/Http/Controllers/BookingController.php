@@ -50,6 +50,7 @@ class BookingController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        try {
         Booking::where('status', 'checkout_scheduled')
             ->whereNotNull('checkout_release_available_at')
             ->where('checkout_release_available_at', '<=', now())
@@ -219,7 +220,7 @@ class BookingController extends Controller
 
         $booking->load(['user', 'room']);
 
-        event(new BookingUpdated($booking, 'booking'));
+        $this->broadcastSafely(new BookingUpdated($booking, 'booking'), 'booking');
 
         BookingAudit::create([
             'booking_id' => $booking->id,
@@ -245,10 +246,22 @@ class BookingController extends Controller
         return back()
             ->with('status', 'Booking submitted with ID. Awaiting admin verification and confirmation.')
             ->with('submitted_booking_id', $booking->id);
+        } catch (\Throwable $exception) {
+            report($exception);
+            error_log('[BookingController@store] '.$exception);
+
+            if (config('app.debug')) {
+                $message = $exception->getMessage()."\n\n".$exception->getTraceAsString();
+                return response('<pre>'.e($message).'</pre>', 500);
+            }
+
+            throw $exception;
+        }
     }
 
     public function showPayment(Request $request, Booking $booking)
     {
+        try {
         if ($booking->user_id !== $request->user()->id) {
             return redirect()
                 ->route('rooms.history')
@@ -270,10 +283,22 @@ class BookingController extends Controller
         $booking->loadMissing('room');
 
         return view('rooms.payment', compact('booking'));
+        } catch (\Throwable $exception) {
+            report($exception);
+            error_log('[BookingController@showPayment] '.$exception);
+
+            if (config('app.debug')) {
+                $message = $exception->getMessage()."\n\n".$exception->getTraceAsString();
+                return response('<pre>'.e($message).'</pre>', 500);
+            }
+
+            throw $exception;
+        }
     }
 
     public function submitPaymentProof(Request $request, Booking $booking): RedirectResponse
     {
+        try {
         if ($booking->user_id !== $request->user()->id) {
             return redirect()
                 ->route('rooms.history')
@@ -366,7 +391,7 @@ class BookingController extends Controller
             'payment_attempts' => $attempts + 1,
         ]);
 
-        event(new BookingUpdated($booking, 'payment'));
+        $this->broadcastSafely(new BookingUpdated($booking, 'payment'), 'payment');
 
         BookingAudit::create([
             'booking_id' => $booking->id,
@@ -385,6 +410,17 @@ class BookingController extends Controller
         ]);
 
         return back()->with('payment_status', 'Payment proof submitted. Awaiting confirmation.');
+        } catch (\Throwable $exception) {
+            report($exception);
+            error_log('[BookingController@submitPaymentProof] '.$exception);
+
+            if (config('app.debug')) {
+                $message = $exception->getMessage()."\n\n".$exception->getTraceAsString();
+                return response('<pre>'.e($message).'</pre>', 500);
+            }
+
+            throw $exception;
+        }
     }
 
     private function sendBookingEmail(Booking $booking, string $subjectLine, string $messageLine): void
@@ -401,6 +437,19 @@ class BookingController extends Controller
                 'email' => $booking->user->email,
                 'error' => 'Brevo API send failed.',
             ]);
+        }
+    }
+
+    private function broadcastSafely(object $event, string $scope): void
+    {
+        try {
+            event($event);
+        } catch (\Throwable $exception) {
+            Log::warning('Broadcast failed.', [
+                'scope' => $scope,
+                'error' => $exception->getMessage(),
+            ]);
+            error_log('[BookingController@broadcastSafely] '.$exception);
         }
     }
 }

@@ -8,7 +8,9 @@ use App\Models\DailyRoomInventory;
 use App\Models\Floor;
 use App\Models\Room;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
 // Ensure baseline rooms exist for inventory + booking flows.
 $ensureDefaultRooms = function (): void {
@@ -38,6 +40,40 @@ Route::get('/', function () {
     return view('home');
 });
 
+// Temporary diagnostic endpoint when APP_DEBUG=true to surface infra/db issues.
+if (config('app.debug')) {
+    Route::get('/_debug/health', function () {
+        $payload = [
+            'app_env' => config('app.env'),
+            'app_debug' => (bool) config('app.debug'),
+            'app_url' => config('app.url'),
+            'db_default' => config('database.default'),
+        ];
+
+        try {
+            DB::connection()->getPdo();
+            $payload['db'] = 'ok';
+        } catch (\Throwable $exception) {
+            $payload['db'] = 'error';
+            $payload['db_error'] = $exception->getMessage();
+        }
+
+        try {
+            $payload['tables'] = [
+                'sessions' => Schema::hasTable('sessions'),
+                'bookings' => Schema::hasTable('bookings'),
+                'booking_audits' => Schema::hasTable('booking_audits'),
+                'daily_room_inventories' => Schema::hasTable('daily_room_inventories'),
+                'rooms' => Schema::hasTable('rooms'),
+            ];
+        } catch (\Throwable $exception) {
+            $payload['tables_error'] = $exception->getMessage();
+        }
+
+        return response()->json($payload);
+    })->name('debug.health');
+}
+
 Route::get('/rooms', function () {
     return view('rooms.index');
 });
@@ -66,6 +102,7 @@ Route::get('/dashboard', function () {
 
 Route::middleware('auth')->group(function () use ($ensureDefaultRooms) {
     Route::get('/rooms/booking', function () use ($ensureDefaultRooms) {
+        try {
         $ensureDefaultRooms();
 
         $bookableFloorNumbers = [15, 16];
@@ -230,6 +267,17 @@ Route::middleware('auth')->group(function () use ($ensureDefaultRooms) {
             ->get();
 
         return view('rooms.booking', compact('rooms', 'confirmedBookings', 'cancelledBookings', 'calendarDays', 'availabilityByDate', 'floorInventoryData'));
+        } catch (\Throwable $exception) {
+            report($exception);
+            error_log('[rooms.booking] '.$exception);
+
+            if (config('app.debug')) {
+                $message = $exception->getMessage()."\n\n".$exception->getTraceAsString();
+                return response('<pre>'.e($message).'</pre>', 500);
+            }
+
+            throw $exception;
+        }
     })->middleware('verified')->name('rooms.booking');
 
     Route::post('/rooms/booking', [BookingController::class, 'store'])

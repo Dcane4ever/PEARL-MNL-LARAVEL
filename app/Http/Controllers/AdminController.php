@@ -62,7 +62,7 @@ class AdminController extends Controller
             'payment_status' => $booking->payment_status ?: 'unpaid',
         ]);
 
-        event(new BookingUpdated($booking, 'booking'));
+        $this->broadcastSafely(new BookingUpdated($booking, 'booking'), 'booking');
 
         BookingAudit::create([
             'booking_id' => $booking->id,
@@ -114,7 +114,7 @@ class AdminController extends Controller
             'checkout_release_admin_id' => null,
         ]);
 
-        event(new BookingUpdated($booking, 'booking'));
+        $this->broadcastSafely(new BookingUpdated($booking, 'booking'), 'booking');
 
         BookingAudit::create([
             'booking_id' => $booking->id,
@@ -171,7 +171,7 @@ class AdminController extends Controller
             'verification_notes' => $data['verification_notes'] ?? null,
         ]);
 
-        event(new BookingUpdated($booking, 'booking'));
+        $this->broadcastSafely(new BookingUpdated($booking, 'booking'), 'booking');
 
         BookingAudit::create([
             'booking_id' => $booking->id,
@@ -291,7 +291,7 @@ class AdminController extends Controller
             'payment_notes' => $data['payment_notes'] ?? null,
         ]);
 
-        event(new BookingUpdated($booking, 'payment'));
+        $this->broadcastSafely(new BookingUpdated($booking, 'payment'), 'payment');
 
         BookingAudit::create([
             'booking_id' => $booking->id,
@@ -351,7 +351,7 @@ class AdminController extends Controller
             'payment_notes' => $data['payment_notes'] ?? null,
         ]);
 
-        event(new BookingUpdated($booking, 'payment'));
+        $this->broadcastSafely(new BookingUpdated($booking, 'payment'), 'payment');
 
         BookingAudit::create([
             'booking_id' => $booking->id,
@@ -409,7 +409,7 @@ class AdminController extends Controller
             'checkout_release_admin_id' => null,
         ]);
 
-        event(new BookingUpdated($booking, 'booking'));
+        $this->broadcastSafely(new BookingUpdated($booking, 'booking'), 'booking');
 
         BookingAudit::create([
             'booking_id' => $booking->id,
@@ -451,7 +451,7 @@ class AdminController extends Controller
             'checkout_release_admin_id' => $request->user()->id,
         ]);
 
-        event(new BookingUpdated($booking, 'booking'));
+        $this->broadcastSafely(new BookingUpdated($booking, 'booking'), 'booking');
 
         BookingAudit::create([
             'booking_id' => $booking->id,
@@ -493,7 +493,7 @@ class AdminController extends Controller
             'checkout_release_admin_id' => $request->user()->id,
         ]);
 
-        event(new BookingUpdated($booking, 'booking'));
+        $this->broadcastSafely(new BookingUpdated($booking, 'booking'), 'booking');
 
         BookingAudit::create([
             'booking_id' => $booking->id,
@@ -646,7 +646,7 @@ class AdminController extends Controller
             throw $exception;
         }
 
-        event(new InventoryUpdated($startDate->toDateString()));
+        $this->broadcastSafely(new InventoryUpdated($startDate->toDateString()), 'inventory');
 
         $rangeLabel = $startDate->equalTo($endDate)
             ? $startDate->toDateString()
@@ -694,8 +694,21 @@ class AdminController extends Controller
             ]);
         }
 
-        event(new AdminOpsUpdated('room_settings'));
+        $this->broadcastSafely(new AdminOpsUpdated('room_settings'), 'admin_ops');
 
         return back()->with('status', 'Room settings updated successfully.');
+    }
+
+    private function broadcastSafely(object $event, string $scope): void
+    {
+        try {
+            event($event);
+        } catch (\Throwable $exception) {
+            Log::warning('Broadcast failed.', [
+                'scope' => $scope,
+                'error' => $exception->getMessage(),
+            ]);
+            error_log('[AdminController@broadcastSafely] '.$exception);
+        }
     }
 }
