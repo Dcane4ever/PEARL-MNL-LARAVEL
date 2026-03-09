@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -29,5 +30,13 @@ return Application::configure(basePath: dirname(__DIR__))
             | Request::HEADER_X_FORWARDED_AWS_ELB);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->renderable(function (PostTooLargeException $exception, Request $request) {
+            $message = 'Upload too large. Max 5MB per file. Please compress the image and try again.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 413);
+            }
+
+            return back()->withErrors(['id_documents' => $message])->withInput();
+        });
     })->create();

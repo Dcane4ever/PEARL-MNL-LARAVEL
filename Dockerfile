@@ -35,6 +35,7 @@ WORKDIR /var/www/html
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zz-log.conf
+COPY docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
