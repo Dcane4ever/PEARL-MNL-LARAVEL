@@ -250,7 +250,9 @@ class BookingController extends Controller
     public function showPayment(Request $request, Booking $booking)
     {
         if ($booking->user_id !== $request->user()->id) {
-            abort(403);
+            return redirect()
+                ->route('rooms.history')
+                ->withErrors(['payment_proof' => 'You can only access payments for your own bookings.']);
         }
 
         if ($booking->payment_status === 'pay_on_site') {
@@ -273,7 +275,9 @@ class BookingController extends Controller
     public function submitPaymentProof(Request $request, Booking $booking): RedirectResponse
     {
         if ($booking->user_id !== $request->user()->id) {
-            abort(403);
+            return redirect()
+                ->route('rooms.history')
+                ->withErrors(['payment_proof' => 'You can only submit payment proof for your own bookings.']);
         }
 
         if (! in_array($booking->status, ['confirmed', 'checked_in', 'checkout_scheduled'], true)) {
