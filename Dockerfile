@@ -26,10 +26,11 @@ WORKDIR /var/www/html
         freetype-dev \
         oniguruma-dev \
         icu-dev \
+        postgresql-dev \
         libzip-dev \
         zip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_mysql mbstring zip exif intl gd \
+    && docker-php-ext-install pdo pdo_mysql pdo_pgsql pgsql mbstring zip exif intl gd \
     && rm -rf /var/cache/apk/*
 
 COPY docker/nginx.conf /etc/nginx/nginx.conf

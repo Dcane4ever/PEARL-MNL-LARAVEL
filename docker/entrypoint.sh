@@ -15,8 +15,10 @@ fi
 
 php artisan storage:link >/dev/null 2>&1 || true
 
-if [ "${RUN_MIGRATIONS}" = "1" ]; then
+if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
   php artisan migrate --force
+else
+  echo "Skipping migrations because RUN_MIGRATIONS=0"
 fi
 
 php artisan package:discover --ansi

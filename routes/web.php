@@ -124,7 +124,10 @@ Route::middleware('auth')->group(function () use ($ensureDefaultRooms) {
 
         $rooms = Room::where('is_active', true)
             ->whereIn('slug', ['junior-suite', 'superior-king'])
-            ->orderByRaw("FIELD(slug, 'junior-suite', 'superior-king')")
+            ->orderByRaw(
+                "CASE WHEN slug = ? THEN 0 WHEN slug = ? THEN 1 ELSE 2 END",
+                ['junior-suite', 'superior-king']
+            )
             ->get();
 
         if ($rooms->count() === 0) {
@@ -373,7 +376,10 @@ Route::middleware('auth')->group(function () use ($ensureDefaultRooms) {
 
         $rooms = Room::orderBy('name')->get();
         $inventoryRooms = Room::whereIn('slug', ['junior-suite', 'superior-king'])
-            ->orderByRaw("FIELD(slug, 'junior-suite', 'superior-king')")
+            ->orderByRaw(
+                "CASE WHEN slug = ? THEN 0 WHEN slug = ? THEN 1 ELSE 2 END",
+                ['junior-suite', 'superior-king']
+            )
             ->get();
         if ($inventoryRooms->isEmpty()) {
             $inventoryRooms = Room::where('is_active', true)->orderBy('name')->limit(2)->get();
