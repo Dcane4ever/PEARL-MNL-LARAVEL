@@ -10,6 +10,30 @@ use App\Models\Room;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
 
+// Ensure baseline rooms exist for inventory + booking flows.
+$ensureDefaultRooms = function (): void {
+    $defaults = [
+        [
+            'name' => 'Superior King',
+            'slug' => 'superior-king',
+            'description' => 'Comfortable superior room with king bed.',
+            'base_rate' => 3645.00,
+            'is_active' => true,
+        ],
+        [
+            'name' => 'Junior Suite',
+            'slug' => 'junior-suite',
+            'description' => 'Spacious junior suite with premium amenities.',
+            'base_rate' => 5800.00,
+            'is_active' => true,
+        ],
+    ];
+
+    foreach ($defaults as $room) {
+        Room::firstOrCreate(['slug' => $room['slug']], $room);
+    }
+};
+
 Route::get('/', function () {
     return view('home');
 });
@@ -40,8 +64,10 @@ Route::get('/dashboard', function () {
     return redirect()->route('rooms.booking');
 })->middleware(['auth'])->name('dashboard');
 
-Route::middleware('auth')->group(function () {
-    Route::get('/rooms/booking', function () {
+Route::middleware('auth')->group(function () use ($ensureDefaultRooms) {
+    Route::get('/rooms/booking', function () use ($ensureDefaultRooms) {
+        $ensureDefaultRooms();
+
         $bookableFloorNumbers = [15, 16];
         foreach ($bookableFloorNumbers as $floorNumber) {
             Floor::firstOrCreate(
@@ -262,7 +288,9 @@ Route::middleware('auth')->group(function () {
         return view('admin.dashboard');
     })->middleware('admin')->name('admin.dashboard');
 
-    Route::get('/admin/operations', function () {
+    Route::get('/admin/operations', function () use ($ensureDefaultRooms) {
+        $ensureDefaultRooms();
+
         $bookableFloorNumbers = [15, 16];
         foreach ($bookableFloorNumbers as $floorNumber) {
             Floor::firstOrCreate(
