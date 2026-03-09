@@ -20,8 +20,15 @@ if [ "${RUN_MIGRATIONS}" = "1" ]; then
 fi
 
 php artisan package:discover --ansi
-php artisan config:cache
-php artisan route:cache || true
-php artisan view:cache || true
+
+if [ "${APP_DEBUG}" = "true" ] || [ "${APP_DEBUG}" = "1" ]; then
+  php artisan config:clear || true
+  php artisan route:clear || true
+  php artisan view:clear || true
+else
+  php artisan config:cache
+  php artisan route:cache || true
+  php artisan view:cache || true
+fi
 
 exec "$@"
