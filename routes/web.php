@@ -66,7 +66,8 @@ Route::get('/dashboard', function () {
 
 Route::middleware('auth')->group(function () use ($ensureDefaultRooms) {
     Route::get('/rooms/booking', function () use ($ensureDefaultRooms) {
-        $ensureDefaultRooms();
+        try {
+            $ensureDefaultRooms();
 
         $bookableFloorNumbers = [15, 16];
         foreach ($bookableFloorNumbers as $floorNumber) {
@@ -229,7 +230,17 @@ Route::middleware('auth')->group(function () use ($ensureDefaultRooms) {
             ->latest()
             ->get();
 
-        return view('rooms.booking', compact('rooms', 'confirmedBookings', 'cancelledBookings', 'calendarDays', 'availabilityByDate', 'floorInventoryData'));
+            return view('rooms.booking', compact('rooms', 'confirmedBookings', 'cancelledBookings', 'calendarDays', 'availabilityByDate', 'floorInventoryData'));
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            if (config('app.debug')) {
+                $message = $exception->getMessage()."\n\n".$exception->getTraceAsString();
+                return response('<pre>'.e($message).'</pre>', 500);
+            }
+
+            throw $exception;
+        }
     })->middleware('verified')->name('rooms.booking');
 
     Route::post('/rooms/booking', [BookingController::class, 'store'])

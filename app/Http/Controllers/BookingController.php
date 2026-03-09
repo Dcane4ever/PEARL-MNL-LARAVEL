@@ -50,6 +50,7 @@ class BookingController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        try {
         Booking::where('status', 'checkout_scheduled')
             ->whereNotNull('checkout_release_available_at')
             ->where('checkout_release_available_at', '<=', now())
@@ -245,15 +246,26 @@ class BookingController extends Controller
         return back()
             ->with('status', 'Booking submitted with ID. Awaiting admin verification and confirmation.')
             ->with('submitted_booking_id', $booking->id);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            if (config('app.debug')) {
+                $message = $exception->getMessage()."\n\n".$exception->getTraceAsString();
+                return response('<pre>'.e($message).'</pre>', 500);
+            }
+
+            throw $exception;
+        }
     }
 
     public function showPayment(Request $request, Booking $booking)
     {
-        if ($booking->user_id !== $request->user()->id) {
-            return redirect()
-                ->route('rooms.history')
-                ->withErrors(['payment_proof' => 'You can only access payments for your own bookings.']);
-        }
+        try {
+            if ($booking->user_id !== $request->user()->id) {
+                return redirect()
+                    ->route('rooms.history')
+                    ->withErrors(['payment_proof' => 'You can only access payments for your own bookings.']);
+            }
 
         if ($booking->payment_status === 'pay_on_site') {
             return redirect()
@@ -269,16 +281,27 @@ class BookingController extends Controller
 
         $booking->loadMissing('room');
 
-        return view('rooms.payment', compact('booking'));
+            return view('rooms.payment', compact('booking'));
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            if (config('app.debug')) {
+                $message = $exception->getMessage()."\n\n".$exception->getTraceAsString();
+                return response('<pre>'.e($message).'</pre>', 500);
+            }
+
+            throw $exception;
+        }
     }
 
     public function submitPaymentProof(Request $request, Booking $booking): RedirectResponse
     {
-        if ($booking->user_id !== $request->user()->id) {
-            return redirect()
-                ->route('rooms.history')
-                ->withErrors(['payment_proof' => 'You can only submit payment proof for your own bookings.']);
-        }
+        try {
+            if ($booking->user_id !== $request->user()->id) {
+                return redirect()
+                    ->route('rooms.history')
+                    ->withErrors(['payment_proof' => 'You can only submit payment proof for your own bookings.']);
+            }
 
         if (! in_array($booking->status, ['confirmed', 'checked_in', 'checkout_scheduled'], true)) {
             return back()->withErrors([
@@ -384,7 +407,17 @@ class BookingController extends Controller
             ],
         ]);
 
-        return back()->with('payment_status', 'Payment proof submitted. Awaiting confirmation.');
+            return back()->with('payment_status', 'Payment proof submitted. Awaiting confirmation.');
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            if (config('app.debug')) {
+                $message = $exception->getMessage()."\n\n".$exception->getTraceAsString();
+                return response('<pre>'.e($message).'</pre>', 500);
+            }
+
+            throw $exception;
+        }
     }
 
     private function sendBookingEmail(Booking $booking, string $subjectLine, string $messageLine): void
